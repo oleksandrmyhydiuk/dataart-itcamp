@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="HomeManagementDeviceApi\HomeManagementDeviceApi.csproj" />
+  <Project Path="HomeManagementDashboard\HomeManagementDashboard.csproj" />
+  <Project Path="HomeManagementMcpServer\HomeManagementMcpServer.csproj" />
+</Solution>
