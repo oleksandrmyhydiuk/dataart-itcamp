@@ -1,0 +1,1109 @@
+@page "/"
+@using System.Text.Json.Nodes
+@implements IDisposable
+@inject DeviceMonitorService Monitor
+@inject WorkflowEngineService Workflows
+@inject McpServerService McpServer
+
+<div class="top-navbar">
+    <div class="brand-group">
+        <div class="brand-icon">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+        </div>
+        <div>
+            <h1 class="brand-title">HomeManagement Smart Hub</h1>
+            <p class="brand-subtitle">
+                Моніторинг пристроїв • Workflow Engine • MCP AI Server • IP хоста:
+                <code>@LocalIpAddress</code>
+            </p>
+        </div>
+    </div>
+
+    <div class="header-controls">
+        <div class="live-indicator @(Monitor.AutoRefreshEnabled ? "active" : "paused")" @onclick="ToggleAutoRefresh" title="Натисніть, щоб увімкнути/вимкнути автооновлення">
+            <span class="pulse-dot"></span>
+            <span>@(Monitor.AutoRefreshEnabled ? $"Автооновлення ({Monitor.RefreshIntervalSeconds}с)" : "Автооновлення: ПАУЗА")</span>
+        </div>
+
+        <button class="btn btn-secondary" @onclick="RefreshAllNowAsync" disabled="@_isRefreshing">
+            @(_isRefreshing ? "Оновлення..." : "⟳ Оновити")
+        </button>
+
+        <button class="btn btn-secondary" @onclick="DiscoverDevicesAsync" disabled="@_isDiscovering">
+            @(_isDiscovering ? "Пошук..." : "🔍 Автопошук")
+        </button>
+
+        <button class="btn btn-primary" @onclick="() => _showAddDevice = !_showAddDevice">
+            + Додати пристрій
+        </button>
+    </div>
+</div>
+
+<!-- Navigation Tabs -->
+<nav class="main-tabs">
+    <button class="main-tab @(_activeTab == "dashboard" ? "active" : "")" @onclick='() => _activeTab = "dashboard"'>
+        📡 Моніторинг та телеметрія
+        <span class="tab-pill">@OnlineCount/@TotalCount</span>
+    </button>
+    <button class="main-tab @(_activeTab == "workflows" ? "active" : "")" @onclick='() => _activeTab = "workflows"'>
+        ⚡ Workflow Engine (Автоматизація)
+        <span class="tab-pill">@_rules.Count(r => r.IsEnabled) активних</span>
+    </button>
+    <button class="main-tab @(_activeTab == "mcp" ? "active" : "")" @onclick='() => _activeTab = "mcp"'>
+        🤖 AI Integration & MCP Server
+        <span class="tab-pill">@McpServer.GetTools().Count tools</span>
+    </button>
+</nav>
+
+@if (!string.IsNullOrWhiteSpace(_statusBanner))
+{
+    <div class="notification-banner">
+        <span>@_statusBanner</span>
+        <button class="btn-close" @onclick="() => _statusBanner = null">✕</button>
+    </div>
+}
+
+@if (_showAddDevice)
+{
+    <div class="add-device-panel card-glass">
+        <div class="add-device-form">
+            <div class="form-field">
+                <label>Назва пристрою (опціонально)</label>
+                <input type="text" class="input-control" placeholder="Наприклад: Kitchen Sensor" @bind="_newDeviceName" />
+            </div>
+            <div class="form-field flex-grow">
+                <label>URL-адреса пристрою (HTTP / HTTPS)</label>
+                <input type="text" class="input-control" placeholder="http://localhost:1235" @bind="_newDeviceUrl" />
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" @onclick="AddCustomDeviceAsync">Підключити</button>
+                <button class="btn btn-ghost" @onclick="() => _showAddDevice = false">Скасувати</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- KPI Summary Row (Always visible) -->
+<section class="kpi-grid">
+    <div class="kpi-card card-glass kpi-online">
+        <div class="kpi-header">
+            <span class="kpi-label">ПРИСТРОЇ ОНЛАЙН (ONLINE)</span>
+            <span class="kpi-badge badge-online">LIVE</span>
+        </div>
+        <div class="kpi-value-row">
+            <span class="kpi-number text-emerald">@OnlineCount</span>
+            <span class="kpi-total">/ @TotalCount всього</span>
+        </div>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill fill-emerald" style="width: @(OnlinePercentage.ToString(CultureInfo.InvariantCulture))%"></div>
+        </div>
+        <div class="kpi-footer">
+            <span>Доступність мережі: <strong>@OnlinePercentage.ToString("0")%</strong></span>
+        </div>
+    </div>
+
+    <div class="kpi-card card-glass kpi-offline">
+        <div class="kpi-header">
+            <span class="kpi-label">НЕДОСТУПНІ (OFFLINE)</span>
+            <span class="kpi-badge @(OfflineCount > 0 ? "badge-offline" : "badge-neutral")">
+                @(OfflineCount > 0 ? "УВАГА" : "НОРМА")
+            </span>
+        </div>
+        <div class="kpi-value-row">
+            <span class="kpi-number @(OfflineCount > 0 ? "text-rose" : "text-muted")">@OfflineCount</span>
+            <span class="kpi-total">пристроїв</span>
+        </div>
+        <div class="kpi-footer">
+            @if (OfflineCount == 0)
+            {
+                <span class="text-emerald">Усі зареєстровані пристрої відповідають</span>
+            }
+            else
+            {
+                <span class="text-rose">Перевірте живлення або запустіть профіль пристрою</span>
+            }
+        </div>
+    </div>
+
+    <div class="kpi-card card-glass">
+        <div class="kpi-header">
+            <span class="kpi-label">СЕРЕДНЯ ТЕМПЕРАТУРА</span>
+            <span class="kpi-badge badge-info">ТЕЛЕМЕТРІЯ</span>
+        </div>
+        <div class="kpi-value-row">
+            <span class="kpi-number text-sky">
+                @(OnlineCount > 0 ? $"{AverageTemperature:0.0} °C" : "—")
+            </span>
+        </div>
+        <div class="kpi-footer">
+            @if (OnlineCount > 0)
+            {
+                <span>Мін: <strong>@MinTemperature.ToString("0.0") °C</strong> • Макс: <strong>@MaxTemperature.ToString("0.0") °C</strong></span>
+            }
+            else
+            {
+                <span>Немає активних датчиків температури</span>
+            }
+        </div>
+    </div>
+
+    <div class="kpi-card card-glass">
+        <div class="kpi-header">
+            <span class="kpi-label">АВТОМАТИЗАЦІЯ ТА AI MCP</span>
+            <span class="kpi-badge badge-purple">SMART ENGINE</span>
+        </div>
+        <div class="kpi-value-row">
+            <span class="kpi-number text-indigo">@_rules.Sum(r => r.ExecutionCount)</span>
+            <span class="kpi-total">спрацювань</span>
+        </div>
+        <div class="kpi-footer">
+            <span>Сценаріїв: <strong>@_rules.Count</strong> • MCP Tools: <strong>@McpServer.GetTools().Count</strong></span>
+        </div>
+    </div>
+</section>
+
+@if (_activeTab == "dashboard")
+{
+    <!-- Telemetry Visualization Row -->
+    <section class="visualization-grid">
+        <div class="chart-card card-glass">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Динаміка температури пристроїв (Real-Time)</h2>
+                    <p class="section-subtitle">Живий графік показників датчиків температури за останні цикли опитування</p>
+                </div>
+                <div class="chart-legend">
+                    @for (int i = 0; i < _devices.Count; i++)
+                    {
+                        var dev = _devices[i];
+                        var color = GetSeriesColor(i);
+                        <span class="legend-item">
+                            <span class="legend-dot" style="background:@color"></span>
+                            <span>@dev.EffectiveName (@(dev.IsOnline ? $"{dev.TemperatureCelsius:0.0}°C" : "Offline"))</span>
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="svg-chart-container">
+                @if (_devices.Any(d => d.TemperatureHistory.Count > 0))
+                {
+                    <svg viewBox="0 0 700 210" class="telemetry-svg" preserveAspectRatio="none">
+                        @for (int step = 0; step <= 4; step++)
+                        {
+                            var y = 20 + step * 40;
+                            var labelVal = ChartMaxTemp - step * ((ChartMaxTemp - ChartMinTemp) / 4.0);
+                            <line x1="48" y1="@y" x2="685" y2="@y" stroke="rgba(148, 163, 184, 0.14)" stroke-dasharray="4 4" />
+                            <svg:text x="40" y="@(y + 4)" text-anchor="end" fill="#94a3b8" font-size="11">@($"{labelVal:0.0}°")</svg:text>
+                        }
+
+                        @for (int i = 0; i < _devices.Count; i++)
+                        {
+                            var dev = _devices[i];
+                            if (dev.TemperatureHistory.Count < 1) continue;
+                            var color = GetSeriesColor(i);
+                            var points = BuildSvgPolylinePoints(dev.TemperatureHistory, 48, 685, 20, 180, ChartMinTemp, ChartMaxTemp);
+                            var areaPoints = BuildSvgAreaPoints(dev.TemperatureHistory, 48, 685, 20, 180, ChartMinTemp, ChartMaxTemp);
+
+                            <polygon points="@areaPoints" fill="@color" fill-opacity="0.10" />
+                            <polyline fill="none" stroke="@color" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" points="@points" />
+
+                            @foreach (var pt in GetSvgCoordinates(dev.TemperatureHistory, 48, 685, 20, 180, ChartMinTemp, ChartMaxTemp))
+                            {
+                                <circle cx="@pt.X.ToString("0.0", CultureInfo.InvariantCulture)"
+                                        cy="@pt.Y.ToString("0.0", CultureInfo.InvariantCulture)"
+                                        r="3.5"
+                                        fill="@color"
+                                        stroke="#0f172a"
+                                        stroke-width="1.5" />
+                            }
+                        }
+                    </svg>
+                }
+                else
+                {
+                    <div class="empty-chart-state">
+                        <p>Очікування телеметрії від онлайн-пристроїв...</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="uptime-card card-glass">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Статус та Uptime пристроїв</h2>
+                    <p class="section-subtitle">Порівняння тривалості безперервної роботи та затримки мережі</p>
+                </div>
+            </div>
+
+            <div class="status-distribution-bar">
+                <div class="dist-segment dist-online" style="width: @(OnlinePercentage.ToString(CultureInfo.InvariantCulture))%" title="Online: @OnlineCount"></div>
+                <div class="dist-segment dist-offline" style="width: @((100 - OnlinePercentage).ToString(CultureInfo.InvariantCulture))%" title="Offline: @OfflineCount"></div>
+            </div>
+            <div class="dist-labels">
+                <span class="text-emerald">● Online: @OnlineCount (@OnlinePercentage.ToString("0")%)</span>
+                <span class="text-rose">● Offline: @OfflineCount (@((100 - OnlinePercentage).ToString("0"))%)</span>
+            </div>
+
+            <div class="device-bars-list">
+                @foreach (var dev in _devices)
+                {
+                    var maxUptime = Math.Max(1, _devices.Max(d => d.UptimeSeconds));
+                    var widthPct = dev.IsOnline ? Math.Clamp((double)dev.UptimeSeconds / maxUptime * 100.0, 8.0, 100.0) : 100.0;
+                    <div class="device-bar-item">
+                        <div class="device-bar-top">
+                            <span class="device-bar-name">
+                                <span class="status-dot @(dev.IsOnline ? "dot-online" : "dot-offline")"></span>
+                                @dev.EffectiveName
+                            </span>
+                            <span class="device-bar-meta">
+                                @if (dev.IsOnline)
+                                {
+                                    <span>⏱ @dev.FormattedUptime • @dev.ResponseTimeMs мс</span>
+                                }
+                                else
+                                {
+                                    <span class="text-rose">OFFLINE</span>
+                                }
+                            </span>
+                        </div>
+                        <div class="progress-bar-bg sm">
+                            <div class="progress-bar-fill @(dev.IsOnline ? "fill-sky" : "fill-rose-muted")"
+                                 style="width: @(widthPct.ToString("0.0", CultureInfo.InvariantCulture))%"></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Filter & Search Bar -->
+    <section class="filter-bar">
+        <div class="filter-tabs">
+            <button class="filter-tab @(_statusFilter == "all" ? "active" : "")" @onclick='() => _statusFilter = "all"'>
+                Усі (@TotalCount)
+            </button>
+            <button class="filter-tab @(_statusFilter == "online" ? "active" : "")" @onclick='() => _statusFilter = "online"'>
+                Онлайн (@OnlineCount)
+            </button>
+            <button class="filter-tab @(_statusFilter == "offline" ? "active" : "")" @onclick='() => _statusFilter = "offline"'>
+                Офлайн (@OfflineCount)
+            </button>
+        </div>
+
+        <div class="search-box">
+            <input type="text"
+                   class="input-control search-input"
+                   placeholder="Пошук за назвою або IP/URL..."
+                   @bind="_searchQuery"
+                   @bind:event="oninput" />
+        </div>
+    </section>
+
+    <!-- Device Cards Grid -->
+    <section class="devices-grid">
+        @foreach (var device in FilteredDevices)
+        {
+            <article class="device-card card-glass @(device.IsOnline ? "border-online" : "border-offline")">
+                <div class="device-card-header">
+                    <div class="device-title-group">
+                        <div class="device-status-badge @(device.IsOnline ? "status-online" : "status-offline")">
+                            <span class="status-dot @(device.IsOnline ? "dot-online" : "dot-offline")"></span>
+                            <span>@(device.IsOnline ? "ONLINE" : "OFFLINE")</span>
+                        </div>
+                        <h3 class="device-name">@device.EffectiveName</h3>
+                    </div>
+
+                    <div class="device-header-actions">
+                        <button class="btn-icon" title="Оновити цей пристрій" @onclick="() => Monitor.PollDeviceAsync(device)">
+                            ⟳
+                        </button>
+                        <button class="btn-icon btn-icon-danger" title="Видалити зі списку" @onclick="() => Monitor.RemoveDevice(device.Id)">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                <div class="device-meta-grid">
+                    <div class="meta-item">
+                        <span class="meta-label">Ендпоінт</span>
+                        <a href="@($"{device.EndpointUrl}/info")" target="_blank" class="meta-value link-accent">
+                            @device.EndpointUrl ↗
+                        </a>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">IP-адреса пристрою</span>
+                        <span class="meta-value">@(device.ReportedAddress ?? "—")</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Затримка (Ping)</span>
+                        <span class="meta-value">@(device.IsOnline ? $"{device.ResponseTimeMs} мс" : "—")</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Остання перевірка</span>
+                        <span class="meta-value">@(device.LastCheckedLocal?.ToString("HH:mm:ss") ?? "—")</span>
+                    </div>
+                </div>
+
+                @if (device.IsOnline)
+                {
+                    <div class="metrics-row">
+                        <div class="metric-box">
+                            <div class="metric-box-top">
+                                <span class="metric-title">🌡 Температура</span>
+                                <span class="metric-big text-sky">@device.TemperatureCelsius.ToString("0.0") °C</span>
+                            </div>
+                            <div class="progress-bar-bg sm">
+                                @{
+                                    var tempPct = Math.Clamp((device.TemperatureCelsius - 20.0) / 65.0 * 100.0, 5.0, 100.0);
+                                }
+                                <div class="progress-bar-fill @(device.TemperatureCelsius > 65 ? "fill-rose" : "fill-sky")"
+                                     style="width: @(tempPct.ToString("0.0", CultureInfo.InvariantCulture))%"></div>
+                            </div>
+                        </div>
+
+                        <div class="metric-box">
+                            <div class="metric-box-top">
+                                <span class="metric-title">⏱ Час роботи (Uptime)</span>
+                                <span class="metric-big text-emerald">@device.FormattedUptime</span>
+                            </div>
+                            <span class="metric-sub">@device.UptimeSeconds.ToString("N0") сек з моменту запуску</span>
+                        </div>
+                    </div>
+
+                    @if (device.RawMetrics.Count > 0)
+                    {
+                        <div class="raw-metrics-tags">
+                            @foreach (var kv in device.RawMetrics)
+                            {
+                                <span class="metric-chip">
+                                    <strong>@kv.Key:</strong> @kv.Value
+                                </span>
+                            }
+                        </div>
+                    }
+
+                    <div class="actions-section">
+                        <div class="actions-header">
+                            <span class="actions-title">⚡ Доступні команди керування (/config)</span>
+                            <span class="actions-count">@device.Actions.Count команд</span>
+                        </div>
+
+                        @if (device.Actions.Count > 0)
+                        {
+                            <div class="actions-buttons">
+                                @foreach (var action in device.Actions)
+                                {
+                                    var isDanger = action.Command.Equals("shutdown", StringComparison.OrdinalIgnoreCase) ||
+                                                   action.Command.Equals("restart", StringComparison.OrdinalIgnoreCase);
+                                    <button class="btn-action @(isDanger ? "btn-action-danger" : "")"
+                                            @onclick="() => RunDeviceActionAsync(device, action)">
+                                        <span class="method-tag @(action.CommandType == CommandType.Get ? "tag-get" : "tag-post")">
+                                            @action.CommandType.ToString().ToUpperInvariant()
+                                        </span>
+                                        <span>@action.Action</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted sm-text">Команди керування не налаштовані.</p>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(device.LastActionOutput))
+                        {
+                            <div class="action-output-box @(device.LastActionIsError ? "output-error" : "output-ok")">
+                                <div class="output-header">
+                                    <span>Результат: <strong>@device.LastActionName</strong> (@device.LastActionTime?.ToString("HH:mm:ss"))</span>
+                                    <button class="btn-clear-inline" @onclick="() => device.LastActionOutput = null">✕</button>
+                                </div>
+                                <pre class="output-pre">@device.LastActionOutput</pre>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="offline-alert-box">
+                        <div class="offline-title">Пристрій зараз не в мережі (Offline)</div>
+                        <p class="offline-desc">
+                            @(device.ErrorMessage ?? "Не вдалося отримати відповідь від /info.")
+                        </p>
+                        <p class="offline-hint">
+                            Переконайтеся, що екземпляр пристрою запущено командою:
+                            <code>dotnet run --launch-profile @(device.EndpointUrl.Contains("1235") ? "Device1" : device.EndpointUrl.Contains("1237") ? "Device2" : "Device1")</code>
+                        </p>
+                    </div>
+                }
+            </article>
+        }
+    </section>
+}
+else if (_activeTab == "workflows")
+{
+    <!-- WORKFLOW ENGINE TAB -->
+    <section class="workflow-builder-card card-glass">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">⚡ Конструктор сценаріїв розумного дому (Workflow Engine)</h2>
+                <p class="section-subtitle">Створюйте автоматичні сценарії за схемою: <strong>Trigger (Подія) → Condition (Умова) → Action (Дія)</strong></p>
+            </div>
+        </div>
+
+        <div class="wf-form-grid">
+            <div class="form-field">
+                <label>Назва сценарію</label>
+                <input type="text" class="input-control" placeholder="Наприклад: Охолодження при нагріванні" @bind="_wfName" />
+            </div>
+
+            <div class="form-field">
+                <label>1. Тригер (Trigger)</label>
+                <select class="input-control" @bind="_wfTriggerType">
+                    <option value="@WorkflowTriggerType.TelemetryUpdate">Оновлення телеметрії пристрою</option>
+                    <option value="@WorkflowTriggerType.DeviceBecameOnline">Пристрій з'явився в мережі (Online)</option>
+                    <option value="@WorkflowTriggerType.DeviceBecameOffline">Пристрій втратив зв'язок (Offline)</option>
+                    <option value="@WorkflowTriggerType.ManualOnly">Лише ручний / AI запуск</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label>Пристрій тригера</label>
+                <input type="text" class="input-control" placeholder="Device1, Device2 або *" @bind="_wfTriggerDevice" />
+            </div>
+
+            <div class="form-field">
+                <label>2. Умова — Параметр (Condition)</label>
+                <select class="input-control" @bind="_wfConditionField">
+                    <option value="@WorkflowMetricField.TemperatureCelsius">Temperature (°C)</option>
+                    <option value="@WorkflowMetricField.UptimeSeconds">Uptime (секунди)</option>
+                    <option value="@WorkflowMetricField.ResponseTimeMs">Ping / Затримка (мс)</option>
+                    <option value="@WorkflowMetricField.IsOnline">IsOnline (true / false)</option>
+                    <option value="@WorkflowMetricField.OnlineDevicesCount">Кількість Online-пристроїв</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label>Оператор</label>
+                <select class="input-control" @bind="_wfConditionOp">
+                    <option value="@ComparisonOperator.GreaterThan">&gt; (Більше ніж)</option>
+                    <option value="@ComparisonOperator.GreaterThanOrEqual">&gt;= (Більше або рівно)</option>
+                    <option value="@ComparisonOperator.LessThan">&lt; (Менше ніж)</option>
+                    <option value="@ComparisonOperator.LessThanOrEqual">&lt;= (Менше або рівно)</option>
+                    <option value="@ComparisonOperator.Equals">== (Дорівнює)</option>
+                    <option value="@ComparisonOperator.NotEquals">!= (Не дорівнює)</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label>Порогове значення</label>
+                <input type="text" class="input-control" placeholder="44.0" @bind="_wfConditionValue" />
+            </div>
+
+            <div class="form-field">
+                <label>3. Тип дії (Action)</label>
+                <select class="input-control" @bind="_wfActionType">
+                    <option value="@WorkflowActionType.ExecuteDeviceAction">Виконати команду на пристрої</option>
+                    <option value="@WorkflowActionType.DashboardNotification">Системне сповіщення в Dashboard</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label>Цільовий пристрій дії</label>
+                <input type="text" class="input-control" placeholder="Device1 або Device2" @bind="_wfActionDevice" />
+            </div>
+
+            <div class="form-field">
+                <label>Команда або текст сповіщення</label>
+                <input type="text" class="input-control" placeholder="INFO, Get Motion, Start Calculator..." @bind="_wfActionCommand" />
+            </div>
+
+            <div class="form-field">
+                <label>Кулдаун (сек)</label>
+                <input type="number" class="input-control" min="5" max="3600" @bind="_wfCooldown" />
+            </div>
+        </div>
+
+        <div class="wf-form-footer">
+            <button class="btn btn-primary" @onclick="CreateNewWorkflow">
+                + Створити сценарій автоматизації
+            </button>
+        </div>
+    </section>
+
+    <!-- Active Scenarios List -->
+    <section class="workflows-grid">
+        @foreach (var rule in _rules)
+        {
+            <div class="workflow-card card-glass @(rule.IsEnabled ? "border-online" : "border-offline")">
+                <div class="device-card-header">
+                    <div>
+                        <span class="kpi-badge @(rule.IsEnabled ? "badge-online" : "badge-neutral")">
+                            @(rule.IsEnabled ? "АКТИВНИЙ" : "ПАУЗА")
+                        </span>
+                        <h3 class="device-name" style="margin-top:6px">@rule.Name</h3>
+                        @if (!string.IsNullOrWhiteSpace(rule.Description))
+                        {
+                            <p class="section-subtitle">@rule.Description</p>
+                        }
+                    </div>
+                    <div class="device-header-actions">
+                        <button class="btn btn-secondary" title="Увімкнути/Вимкнути" @onclick="() => Workflows.ToggleRule(rule.Id)">
+                            @(rule.IsEnabled ? "⏸ Пауза" : "▶ Увімкнути")
+                        </button>
+                        <button class="btn btn-primary" title="Примусово протестувати сценарій зараз" @onclick="() => RunWorkflowNowAsync(rule.Id)">
+                            ⚡ Запустити
+                        </button>
+                        <button class="btn-icon btn-icon-danger" title="Видалити сценарій" @onclick="() => Workflows.RemoveRule(rule.Id)">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                <div class="wf-pipeline">
+                    <div class="wf-step">
+                        <span class="wf-step-tag">WHEN (Тригер)</span>
+                        <strong>@rule.DescribeTrigger()</strong>
+                    </div>
+                    <span class="wf-arrow">→</span>
+                    <div class="wf-step">
+                        <span class="wf-step-tag">IF (Умова)</span>
+                        <strong>@rule.Condition.Describe()</strong>
+                    </div>
+                    <span class="wf-arrow">→</span>
+                    <div class="wf-step">
+                        <span class="wf-step-tag">THEN (Дія)</span>
+                        <strong>@rule.Action.Describe()</strong>
+                    </div>
+                </div>
+
+                <div class="wf-meta-footer">
+                    <span>Спрацювань: <strong>@rule.ExecutionCount</strong> • Кулдаун: <strong>@rule.CooldownSeconds с</strong></span>
+                    <span>Останній запуск: <strong>@(rule.LastTriggeredLocal?.ToString("HH:mm:ss") ?? "ще не спрацьовував")</strong></span>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(rule.LastExecutionResult))
+                {
+                    <div class="action-output-box @(rule.LastExecutionError ? "output-error" : "output-ok")">
+                        <pre class="output-pre">@rule.LastExecutionResult</pre>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <!-- Workflow Execution History -->
+    <section class="activity-section card-glass">
+        <div class="section-header">
+            <div>
+                <h2 class="section-title">Історія спрацювань Workflow Engine</h2>
+                <p class="section-subtitle">Журнал автоматичних та ручних запусків сценаріїв розумного дому</p>
+            </div>
+        </div>
+
+        <div class="activity-log-list">
+            @if (_workflowHistory.Count == 0)
+            {
+                <div class="empty-log">Ще немає записів про спрацювання сценаріїв. Натисніть «⚡ Запустити» на будь-якому сценарії або дочекайтеся виконання умови!</div>
+            }
+            else
+            {
+                @foreach (var item in _workflowHistory)
+                {
+                    <div class="log-row @(item.IsError ? "log-error" : "log-info")">
+                        <span class="log-time">@item.Timestamp.ToString("HH:mm:ss")</span>
+                        <span class="log-device">@item.RuleName</span>
+                        <span class="log-category">@item.TriggerReason</span>
+                        <span class="log-msg">@item.ActionSummary → @item.ResultOutput</span>
+                    </div>
+                }
+            }
+        </div>
+    </section>
+}
+else if (_activeTab == "mcp")
+{
+    <!-- AI INTEGRATION & MCP SERVER TAB -->
+    <section class="visualization-grid">
+        <!-- Left: AI Natural Language Assistant via MCP -->
+        <div class="card-glass">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">🤖 AI Smart Home Assistant (MCP Client)</h2>
+                    <p class="section-subtitle">Керуйте розумним домом природною мовою — асистент автоматично викликає інструменти MCP-сервера</p>
+                </div>
+            </div>
+
+            <div class="quick-prompts">
+                <button class="chip-btn" @onclick='() => RunQuickAiPrompt("Знайди всі доступні пристрої в мережі")'>
+                    🔍 Знайти доступні пристрої
+                </button>
+                <button class="chip-btn" @onclick='() => RunQuickAiPrompt("Покажи детальну інформацію про Device1")'>
+                    📊 Деталі Device1
+                </button>
+                <button class="chip-btn" @onclick='() => RunQuickAiPrompt("Перевір рух (Get Motion) на Device1")'>
+                    🏃 Get Motion (Device1)
+                </button>
+                <button class="chip-btn" @onclick='() => RunQuickAiPrompt("Запусти калькулятор на Device1")'>
+                    🧮 Запустити калькулятор
+                </button>
+                <button class="chip-btn" @onclick='() => RunQuickAiPrompt("Покажи всі сценарії автоматизації workflow")'>
+                    ⚡ Список сценаріїв
+                </button>
+            </div>
+
+            <div class="ai-input-row">
+                <input type="text"
+                       class="input-control flex-grow"
+                       placeholder="Напишіть запит (напр.: 'Знайди доступні пристрої' або 'Запусти блокнот на Device1')..."
+                       @bind="_aiPromptInput" />
+                <button class="btn btn-primary" @onclick="SendAiPromptAsync">
+                    Надіслати AI → MCP
+                </button>
+            </div>
+
+            <div class="ai-chat-list">
+                @foreach (var turn in _aiChatTurns)
+                {
+                    <div class="ai-turn-box">
+                        <div class="ai-turn-header">
+                            <strong>Ви:</strong> @turn.UserPrompt
+                            <span class="kpi-badge badge-info">MCP Tool: @turn.ToolCalled</span>
+                        </div>
+                        <div class="ai-turn-reply">
+                            <strong>AI Асистент:</strong> @turn.AssistantReply
+                        </div>
+                        <details class="mcp-json-details">
+                            <summary>Переглянути JSON-RPC 2.0 пакет (Request &amp; Response)</summary>
+                            <div class="mcp-json-grid">
+                                <div>
+                                    <span class="meta-label">MCP Request</span>
+                                    <pre class="output-pre">@turn.McpRequestJson</pre>
+                                </div>
+                                <div>
+                                    <span class="meta-label">MCP Response</span>
+                                    <pre class="output-pre">@turn.McpResponseJson</pre>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Right: Direct MCP Tool Inspector & Config -->
+        <div class="card-glass">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">🛠 Інспектор інструментів MCP-сервера</h2>
+                    <p class="section-subtitle">Пряме тестування протоколу Model Context Protocol (`POST /mcp` та `HomeManagementMcpServer`)</p>
+                </div>
+            </div>
+
+            <div class="form-field" style="margin-bottom:12px">
+                <label>Оберіть MCP Tool (@McpServer.GetTools().Count доступно)</label>
+                <select class="input-control" value="@_selectedMcpTool" @onchange="OnSelectedMcpToolChanged">
+                    @foreach (var tool in McpServer.GetTools())
+                    {
+                        <option value="@tool.Name">@tool.Name — @tool.Description</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-field" style="margin-bottom:12px">
+                <label>JSON-аргументи виклику (`params.arguments`)</label>
+                <textarea class="input-control" rows="4" style="font-family:Consolas,monospace" @bind="_mcpToolArgsJson"></textarea>
+            </div>
+
+            <button class="btn btn-primary" style="margin-bottom:14px" @onclick="InvokeSelectedMcpToolAsync">
+                ▶ Викликати MCP Tool (`tools/call`)
+            </button>
+
+            @if (!string.IsNullOrWhiteSpace(_mcpDirectResultJson))
+            {
+                <div class="action-output-box output-ok" style="margin-bottom:16px">
+                    <div class="output-header">
+                        <span>Відповідь MCP Server (`@_selectedMcpTool`)</span>
+                    </div>
+                    <pre class="output-pre" style="max-height:200px">@_mcpDirectResultJson</pre>
+                </div>
+            }
+
+            <div class="mcp-config-box">
+                <span class="meta-label">Підключення до зовнішніх AI-клієнтів (Claude Desktop / Cursor / VS Code / Antigravity)</span>
+                <pre class="output-pre" style="margin-top:6px;max-height:175px">{
+  "mcpServers": {
+    "smart-home-stdio": {
+      "command": "dotnet",
+      "args": ["run", "--project", "HomeManagementMcpServer"]
+    },
+    "smart-home-http": {
+      "url": "http://localhost:5180/mcp"
+    }
+  }
+}</pre>
+            </div>
+        </div>
+    </section>
+}
+
+<!-- Live Activity & Event Log -->
+<section class="activity-section card-glass">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Журнал подій системи, пристроїв та AI</h2>
+            <p class="section-subtitle">Історія підключень пристроїв, спрацювань Workflow Engine та викликів MCP у реальному часі</p>
+        </div>
+        <button class="btn btn-ghost" @onclick="() => Monitor.ClearLogs()">Очистити журнал</button>
+    </div>
+
+    <div class="activity-log-list">
+        @if (_logs.Count == 0)
+        {
+            <div class="empty-log">Журнал подій порожній.</div>
+        }
+        else
+        {
+            @foreach (var log in _logs.Take(15))
+            {
+                <div class="log-row @(log.IsError ? "log-error" : "log-info")">
+                    <span class="log-time">@log.Timestamp.ToString("HH:mm:ss")</span>
+                    <span class="log-device">@log.DeviceName</span>
+                    <span class="log-category">@log.Category</span>
+                    <span class="log-msg">@log.Message</span>
+                </div>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    private string _activeTab = "dashboard";
+    private IReadOnlyList<MonitoredDeviceState> _devices = Array.Empty<MonitoredDeviceState>();
+    private IReadOnlyList<ActivityLogEntry> _logs = Array.Empty<ActivityLogEntry>();
+    private IReadOnlyList<WorkflowRule> _rules = Array.Empty<WorkflowRule>();
+    private IReadOnlyList<WorkflowExecutionLog> _workflowHistory = Array.Empty<WorkflowExecutionLog>();
+    private IReadOnlyList<AiChatTurn> _aiChatTurns = Array.Empty<AiChatTurn>();
+
+    private string _statusFilter = "all";
+    private string _searchQuery = string.Empty;
+    private bool _showAddDevice;
+    private string _newDeviceName = string.Empty;
+    private string _newDeviceUrl = string.Empty;
+    private bool _isRefreshing;
+    private bool _isDiscovering;
+    private string? _statusBanner;
+
+    // Workflow builder form state
+    private string _wfName = "Авто-контроль температури";
+    private WorkflowTriggerType _wfTriggerType = WorkflowTriggerType.TelemetryUpdate;
+    private string _wfTriggerDevice = "Device1";
+    private WorkflowMetricField _wfConditionField = WorkflowMetricField.TemperatureCelsius;
+    private ComparisonOperator _wfConditionOp = ComparisonOperator.GreaterThan;
+    private string _wfConditionValue = "43.5";
+    private WorkflowActionType _wfActionType = WorkflowActionType.ExecuteDeviceAction;
+    private string _wfActionDevice = "Device1";
+    private string _wfActionCommand = "INFO";
+    private int _wfCooldown = 30;
+
+    // MCP & AI assistant state
+    private string _aiPromptInput = string.Empty;
+    private string _selectedMcpTool = "list_devices";
+    private string _mcpToolArgsJson = "{\n  \"onlineOnly\": false\n}";
+    private string? _mcpDirectResultJson;
+
+    private string LocalIpAddress => NetworkManager.GetLocalIp();
+    private int TotalCount => _devices.Count;
+    private int OnlineCount => _devices.Count(d => d.IsOnline);
+    private int OfflineCount => _devices.Count(d => !d.IsOnline);
+    private double OnlinePercentage => TotalCount == 0 ? 0 : (double)OnlineCount / TotalCount * 100.0;
+
+    private double AverageTemperature =>
+        OnlineCount > 0 ? _devices.Where(d => d.IsOnline).Average(d => d.TemperatureCelsius) : 0;
+
+    private double MinTemperature =>
+        OnlineCount > 0 ? _devices.Where(d => d.IsOnline).Min(d => d.TemperatureCelsius) : 0;
+
+    private double MaxTemperature =>
+        OnlineCount > 0 ? _devices.Where(d => d.IsOnline).Max(d => d.TemperatureCelsius) : 0;
+
+    private double ChartMinTemp
+    {
+        get
+        {
+            var pts = _devices.SelectMany(d => d.TemperatureHistory).Select(p => p.Value).ToList();
+            return pts.Count > 0 ? Math.Floor(pts.Min() - 2) : 35;
+        }
+    }
+
+    private double ChartMaxTemp
+    {
+        get
+        {
+            var pts = _devices.SelectMany(d => d.TemperatureHistory).Select(p => p.Value).ToList();
+            var max = pts.Count > 0 ? Math.Ceiling(pts.Max() + 2) : 55;
+            return Math.Max(ChartMinTemp + 4, max);
+        }
+    }
+
+    private IEnumerable<MonitoredDeviceState> FilteredDevices =>
+        _devices.Where(d =>
+        {
+            if (_statusFilter == "online" && !d.IsOnline) return false;
+            if (_statusFilter == "offline" && d.IsOnline) return false;
+            if (!string.IsNullOrWhiteSpace(_searchQuery))
+            {
+                var q = _searchQuery.Trim();
+                return d.EffectiveName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                       d.EndpointUrl.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                       (d.ReportedAddress?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
+            }
+            return true;
+        });
+
+    protected override void OnInitialized()
+    {
+        LoadSnapshot();
+        Monitor.OnStateChanged += HandleStateChanged;
+        Workflows.OnWorkflowStateChanged += HandleStateChanged;
+        McpServer.OnMcpActivityChanged += HandleStateChanged;
+    }
+
+    private void LoadSnapshot()
+    {
+        _devices = Monitor.GetDevices();
+        _logs = Monitor.GetActivityLogs();
+        _rules = Workflows.GetRules();
+        _workflowHistory = Workflows.GetExecutionHistory();
+        _aiChatTurns = McpServer.GetChatHistory();
+    }
+
+    private void HandleStateChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            LoadSnapshot();
+            StateHasChanged();
+        });
+    }
+
+    private void ToggleAutoRefresh()
+    {
+        Monitor.AutoRefreshEnabled = !Monitor.AutoRefreshEnabled;
+    }
+
+    private async Task RefreshAllNowAsync()
+    {
+        _isRefreshing = true;
+        try
+        {
+            await Monitor.RefreshAllAsync();
+        }
+        finally
+        {
+            _isRefreshing = false;
+        }
+    }
+
+    private async Task DiscoverDevicesAsync()
+    {
+        _isDiscovering = true;
+        try
+        {
+            var count = await Monitor.DiscoverLocalhostDevicesAsync();
+            _statusBanner = count > 0
+                ? $"Знайдено та підключено нових пристроїв: {count}"
+                : "Нових активних пристроїв на стандартних локальних портах не знайдено.";
+        }
+        finally
+        {
+            _isDiscovering = false;
+        }
+    }
+
+    private async Task AddCustomDeviceAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newDeviceUrl)) return;
+
+        var added = await Monitor.AddDeviceAsync(_newDeviceUrl, string.IsNullOrWhiteSpace(_newDeviceName) ? null : _newDeviceName);
+        if (added)
+        {
+            _statusBanner = $"Пристрій {_newDeviceUrl} додано до моніторингу.";
+            _newDeviceName = string.Empty;
+            _newDeviceUrl = string.Empty;
+            _showAddDevice = false;
+        }
+        else
+        {
+            _statusBanner = "Цей пристрій вже є у списку моніторингу.";
+        }
+    }
+
+    private async Task RunDeviceActionAsync(MonitoredDeviceState device, DeviceAction action)
+    {
+        await Monitor.ExecuteActionAsync(device, action);
+    }
+
+    private void CreateNewWorkflow()
+    {
+        if (string.IsNullOrWhiteSpace(_wfName)) return;
+
+        Workflows.AddRule(new WorkflowRule
+        {
+            Name = _wfName.Trim(),
+            Description = $"Тригер: {_wfTriggerDevice} • Кулдаун: {_wfCooldown}с",
+            IsEnabled = true,
+            TriggerType = _wfTriggerType,
+            TriggerDeviceFilter = string.IsNullOrWhiteSpace(_wfTriggerDevice) ? "*" : _wfTriggerDevice.Trim(),
+            CooldownSeconds = Math.Max(5, _wfCooldown),
+            Condition = new WorkflowCondition
+            {
+                Field = _wfConditionField,
+                Operator = _wfConditionOp,
+                TargetValue = _wfConditionValue.Trim()
+            },
+            Action = new WorkflowActionDefinition
+            {
+                ActionType = _wfActionType,
+                TargetDeviceNameOrUrl = string.IsNullOrWhiteSpace(_wfActionDevice) ? "Device1" : _wfActionDevice.Trim(),
+                CommandOrActionName = string.IsNullOrWhiteSpace(_wfActionCommand) ? "INFO" : _wfActionCommand.Trim(),
+                NotificationMessage = _wfActionType == WorkflowActionType.DashboardNotification ? _wfActionCommand.Trim() : null
+            }
+        });
+
+        _statusBanner = $"Сценарій '{_wfName}' успішно створено!";
+        LoadSnapshot();
+    }
+
+    private async Task RunWorkflowNowAsync(string id)
+    {
+        var (ok, output) = await Workflows.TriggerRuleManuallyAsync(id);
+        _statusBanner = ok
+            ? $"Сценарій виконано: {output}"
+            : $"Помилка виконання сценарію: {output}";
+        LoadSnapshot();
+    }
+
+    private async Task RunQuickAiPrompt(string prompt)
+    {
+        _aiPromptInput = prompt;
+        await SendAiPromptAsync();
+    }
+
+    private async Task SendAiPromptAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_aiPromptInput)) return;
+        var prompt = _aiPromptInput;
+        _aiPromptInput = string.Empty;
+        await McpServer.ProcessNaturalLanguagePromptAsync(prompt);
+        LoadSnapshot();
+    }
+
+    private void OnSelectedMcpToolChanged(ChangeEventArgs e)
+    {
+        _selectedMcpTool = e.Value?.ToString() ?? "list_devices";
+        _mcpToolArgsJson = _selectedMcpTool switch
+        {
+            "discover_devices" => "{ }",
+            "list_devices" => "{\n  \"onlineOnly\": false\n}",
+            "get_device_details" => "{\n  \"device\": \"Device1\"\n}",
+            "execute_device_action" => "{\n  \"device\": \"Device1\",\n  \"action\": \"Get Motion\"\n}",
+            "list_workflows" => "{ }",
+            "create_workflow" => "{\n  \"name\": \"MCP Temp Guard\",\n  \"triggerDevice\": \"Device1\",\n  \"metricField\": \"TemperatureCelsius\",\n  \"operator\": \"GreaterThan\",\n  \"threshold\": \"44.0\",\n  \"targetDevice\": \"Device1\",\n  \"actionCommand\": \"INFO\"\n}",
+            "trigger_workflow" => "{\n  \"workflow\": \"wf-temp-guard\"\n}",
+            _ => "{ }"
+        };
+    }
+
+    private async Task InvokeSelectedMcpToolAsync()
+    {
+        JsonObject argsObj;
+        try
+        {
+            argsObj = (JsonNode.Parse(_mcpToolArgsJson) as JsonObject) ?? new JsonObject();
+        }
+        catch (Exception ex)
+        {
+            _mcpDirectResultJson = $"Invalid JSON arguments: {ex.Message}";
+            return;
+        }
+
+        var result = await McpServer.CallToolDirectAsync(_selectedMcpTool, argsObj);
+        _mcpDirectResultJson = result.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        LoadSnapshot();
+    }
+
+    private static string GetSeriesColor(int index)
+    {
+        string[] palette = ["#38bdf8", "#34d399", "#a78bfa", "#fbbf24", "#f472b6"];
+        return palette[index % palette.Length];
+    }
+
+    private static List<(double X, double Y)> GetSvgCoordinates(
+        List<MetricSample> samples,
+        double minX,
+        double maxX,
+        double minY,
+        double maxY,
+        double minVal,
+        double maxVal)
+    {
+        var result = new List<(double X, double Y)>();
+        if (samples.Count == 0) return result;
+
+        var rangeVal = Math.Max(0.1, maxVal - minVal);
+        for (int i = 0; i < samples.Count; i++)
+        {
+            var x = samples.Count == 1
+                ? (minX + maxX) / 2.0
+                : minX + (double)i / (samples.Count - 1) * (maxX - minX);
+            var normalized = Math.Clamp((samples[i].Value - minVal) / rangeVal, 0.0, 1.0);
+            var y = maxY - normalized * (maxY - minY);
+            result.Add((x, y));
+        }
+
+        return result;
+    }
+
+    private static string BuildSvgPolylinePoints(
+        List<MetricSample> samples,
+        double minX,
+        double maxX,
+        double minY,
+        double maxY,
+        double minVal,
+        double maxVal)
+    {
+        var coords = GetSvgCoordinates(samples, minX, maxX, minY, maxY, minVal, maxVal);
+        return string.Join(" ", coords.Select(p => $"{p.X.ToString("0.0", CultureInfo.InvariantCulture)},{p.Y.ToString("0.0", CultureInfo.InvariantCulture)}"));
+    }
+
+    private static string BuildSvgAreaPoints(
+        List<MetricSample> samples,
+        double minX,
+        double maxX,
+        double minY,
+        double maxY,
+        double minVal,
+        double maxVal)
+    {
+        var coords = GetSvgCoordinates(samples, minX, maxX, minY, maxY, minVal, maxVal);
+        if (coords.Count == 0) return string.Empty;
+        var poly = BuildSvgPolylinePoints(samples, minX, maxX, minY, maxY, minVal, maxVal);
+        var firstX = coords.First().X.ToString("0.0", CultureInfo.InvariantCulture);
+        var lastX = coords.Last().X.ToString("0.0", CultureInfo.InvariantCulture);
+        var bottomY = maxY.ToString("0.0", CultureInfo.InvariantCulture);
+        return $"{firstX},{bottomY} {poly} {lastX},{bottomY}";
+    }
+
+    public void Dispose()
+    {
+        Monitor.OnStateChanged -= HandleStateChanged;
+        Workflows.OnWorkflowStateChanged -= HandleStateChanged;
+        McpServer.OnMcpActivityChanged -= HandleStateChanged;
+    }
+}
