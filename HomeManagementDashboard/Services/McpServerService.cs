@@ -583,6 +583,9 @@ public class McpServerService
         isOnline = d.IsOnline,
         responseTimeMs = d.ResponseTimeMs,
         temperatureCelsius = d.TemperatureCelsius,
+        humidityPercent = d.HumidityPercent,
+        powerWatts = d.PowerWatts,
+        co2Ppm = d.Co2Ppm,
         uptimeSeconds = d.UptimeSeconds,
         formattedUptime = d.FormattedUptime,
         availableActions = d.Actions.Select(a => new

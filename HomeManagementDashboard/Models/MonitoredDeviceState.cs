@@ -33,9 +33,15 @@ public class MonitoredDeviceState
     public string? ErrorMessage { get; set; }
     public int UptimeSeconds { get; set; }
     public double TemperatureCelsius { get; set; }
+    public double HumidityPercent { get; set; }
+    public double PowerWatts { get; set; }
+    public int Co2Ppm { get; set; }
     public Dictionary<string, string> RawMetrics { get; set; } = new();
     public List<DeviceAction> Actions { get; set; } = new();
     public List<MetricSample> TemperatureHistory { get; set; } = new();
+    public List<MetricSample> HumidityHistory { get; set; } = new();
+    public List<MetricSample> PowerHistory { get; set; } = new();
+    public List<MetricSample> Co2History { get; set; } = new();
     public string? LastActionOutput { get; set; }
     public string? LastActionName { get; set; }
     public DateTime? LastActionTime { get; set; }

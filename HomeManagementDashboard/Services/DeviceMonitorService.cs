@@ -206,11 +206,28 @@ public class DeviceMonitorService : IHostedService, IDisposable
                     double.TryParse(tempStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var temp))
                 {
                     device.TemperatureCelsius = Math.Round(temp, 1);
-                    device.TemperatureHistory.Add(new MetricSample(DateTime.Now, device.TemperatureCelsius));
-                    if (device.TemperatureHistory.Count > 24)
-                    {
-                        device.TemperatureHistory.RemoveAt(0);
-                    }
+                    AppendSample(device.TemperatureHistory, device.TemperatureCelsius);
+                }
+
+                if (device.RawMetrics.TryGetValue("Humidity", out var humStr) &&
+                    double.TryParse(humStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var hum))
+                {
+                    device.HumidityPercent = Math.Round(hum, 1);
+                    AppendSample(device.HumidityHistory, device.HumidityPercent);
+                }
+
+                if (device.RawMetrics.TryGetValue("PowerWatts", out var pwrStr) &&
+                    double.TryParse(pwrStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var pwr))
+                {
+                    device.PowerWatts = Math.Round(pwr, 1);
+                    AppendSample(device.PowerHistory, device.PowerWatts);
+                }
+
+                if (device.RawMetrics.TryGetValue("Co2Ppm", out var co2Str) &&
+                    int.TryParse(co2Str, NumberStyles.Any, CultureInfo.InvariantCulture, out var co2))
+                {
+                    device.Co2Ppm = co2;
+                    AppendSample(device.Co2History, device.Co2Ppm);
                 }
 
                 if (!wasOnline)
@@ -429,6 +446,15 @@ public class DeviceMonitorService : IHostedService, IDisposable
                 string.Equals(d.EndpointUrl.TrimEnd('/'), q, StringComparison.OrdinalIgnoreCase) ||
                 d.EffectiveName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
                 d.EndpointUrl.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private static void AppendSample(List<MetricSample> history, double value)
+    {
+        history.Add(new MetricSample(DateTime.Now, value));
+        if (history.Count > 24)
+        {
+            history.RemoveAt(0);
         }
     }
 

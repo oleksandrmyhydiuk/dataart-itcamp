@@ -70,6 +70,30 @@ public class WorkflowEngineService : IDisposable
 
         _rules.Add(new WorkflowRule
         {
+            Id = "wf-co2-ventilation",
+            Name = "Контроль якості повітря (CO₂ > 520 ppm)",
+            Description = "Генерує сповіщення про необхідність провітрювання, коли датчик CO₂ перевищує 520 ppm",
+            IsEnabled = true,
+            TriggerType = WorkflowTriggerType.TelemetryUpdate,
+            TriggerDeviceFilter = "*",
+            CooldownSeconds = 45,
+            Condition = new WorkflowCondition
+            {
+                Field = WorkflowMetricField.Co2Ppm,
+                Operator = ComparisonOperator.GreaterThan,
+                TargetValue = "520"
+            },
+            Action = new WorkflowActionDefinition
+            {
+                ActionType = WorkflowActionType.DashboardNotification,
+                TargetDeviceNameOrUrl = "*",
+                CommandOrActionName = "VentilationAlert",
+                NotificationMessage = "🍃 Рівень CO₂ перевищив 520 ppm — рекомендовано увімкнути вентиляцію."
+            }
+        });
+
+        _rules.Add(new WorkflowRule
+        {
             Id = "wf-offline-alert",
             Name = "Сповіщення про втрату зв'язку з пристроєм",
             Description = "Генерує системне сповіщення у панелі, якщо будь-який пристрій переходить у стан Offline",
@@ -321,6 +345,9 @@ public class WorkflowEngineService : IDisposable
         double actualValue = condition.Field switch
         {
             WorkflowMetricField.TemperatureCelsius => device.TemperatureCelsius,
+            WorkflowMetricField.HumidityPercent => device.HumidityPercent,
+            WorkflowMetricField.PowerWatts => device.PowerWatts,
+            WorkflowMetricField.Co2Ppm => device.Co2Ppm,
             WorkflowMetricField.UptimeSeconds => device.UptimeSeconds,
             WorkflowMetricField.ResponseTimeMs => device.ResponseTimeMs,
             WorkflowMetricField.OnlineDevicesCount => _monitor.OnlineCount,

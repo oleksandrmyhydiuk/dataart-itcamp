@@ -11,6 +11,9 @@ public enum WorkflowTriggerType
 public enum WorkflowMetricField
 {
     TemperatureCelsius,
+    HumidityPercent,
+    PowerWatts,
+    Co2Ppm,
     UptimeSeconds,
     ResponseTimeMs,
     IsOnline,
@@ -44,6 +47,9 @@ public class WorkflowCondition
         var fieldName = Field switch
         {
             WorkflowMetricField.TemperatureCelsius => "Temperature (°C)",
+            WorkflowMetricField.HumidityPercent => "Humidity (%)",
+            WorkflowMetricField.PowerWatts => "Power (W)",
+            WorkflowMetricField.Co2Ppm => "CO₂ (ppm)",
             WorkflowMetricField.UptimeSeconds => "Uptime (сек)",
             WorkflowMetricField.ResponseTimeMs => "Ping (мс)",
             WorkflowMetricField.IsOnline => "IsOnline",

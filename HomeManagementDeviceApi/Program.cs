@@ -20,7 +20,10 @@ app.MapGet("/info", (IConfiguration configuration) => new DeviceInfo
     Metrics = new Dictionary<string, string>
     {
         { "UptimeSeconds", DeviceManager.GetUptime().ToString() },
-        { "Temperature", DeviceManager.GetTemperature().ToString(CultureInfo.InvariantCulture) }
+        { "Temperature", DeviceManager.GetTemperature().ToString(CultureInfo.InvariantCulture) },
+        { "Humidity", DeviceManager.GetHumidity().ToString(CultureInfo.InvariantCulture) },
+        { "PowerWatts", DeviceManager.GetPowerConsumptionWatts().ToString(CultureInfo.InvariantCulture) },
+        { "Co2Ppm", DeviceManager.GetCo2Ppm().ToString(CultureInfo.InvariantCulture) }
     }
 });
 app.MapGet("/config", (IConfiguration configuration, IOptions<CommandsSettings> commandsOptions) =>

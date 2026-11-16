@@ -130,13 +130,17 @@
 
     <div class="kpi-card card-glass">
         <div class="kpi-header">
-            <span class="kpi-label">СЕРЕДНЯ ТЕМПЕРАТУРА</span>
-            <span class="kpi-badge badge-info">ТЕЛЕМЕТРІЯ</span>
+            <span class="kpi-label">КЛІМАТ (ТЕМП. / ВОЛОГІСТЬ)</span>
+            <span class="kpi-badge badge-info">ДАТЧИКИ</span>
         </div>
         <div class="kpi-value-row">
             <span class="kpi-number text-sky">
                 @(OnlineCount > 0 ? $"{AverageTemperature:0.0} °C" : "—")
             </span>
+            @if (OnlineCount > 0)
+            {
+                <span class="kpi-total">• 💧 @AverageHumidity.ToString("0.0")%</span>
+            }
         </div>
         <div class="kpi-footer">
             @if (OnlineCount > 0)
@@ -145,22 +149,27 @@
             }
             else
             {
-                <span>Немає активних датчиків температури</span>
+                <span>Немає активних датчиків клімату</span>
             }
         </div>
     </div>
 
     <div class="kpi-card card-glass">
         <div class="kpi-header">
-            <span class="kpi-label">АВТОМАТИЗАЦІЯ ТА AI MCP</span>
-            <span class="kpi-badge badge-purple">SMART ENGINE</span>
+            <span class="kpi-label">ЕНЕРГІЯ ТА ЯКІСТЬ ПОВІТРЯ</span>
+            <span class="kpi-badge badge-purple">POWER &amp; CO₂</span>
         </div>
         <div class="kpi-value-row">
-            <span class="kpi-number text-indigo">@_rules.Sum(r => r.ExecutionCount)</span>
-            <span class="kpi-total">спрацювань</span>
+            <span class="kpi-number text-indigo">
+                @(OnlineCount > 0 ? $"{TotalPowerWatts:0.0} W" : "—")
+            </span>
+            @if (OnlineCount > 0)
+            {
+                <span class="kpi-total">• 🍃 @AverageCo2Ppm.ToString("0") ppm</span>
+            }
         </div>
         <div class="kpi-footer">
-            <span>Сценаріїв: <strong>@_rules.Count</strong> • MCP Tools: <strong>@McpServer.GetTools().Count</strong></span>
+            <span>Сценаріїв: <strong>@_rules.Count</strong> • Спрацювань: <strong>@_rules.Sum(r => r.ExecutionCount)</strong></span>
         </div>
     </div>
 </section>
@@ -172,46 +181,62 @@
         <div class="chart-card card-glass">
             <div class="section-header">
                 <div>
-                    <h2 class="section-title">Динаміка температури пристроїв (Real-Time)</h2>
-                    <p class="section-subtitle">Живий графік показників датчиків температури за останні цикли опитування</p>
+                    <h2 class="section-title">Динаміка показників датчиків (Real-Time)</h2>
+                    <p class="section-subtitle">Оберіть тип датчика для перегляду живого графіка за останні цикли опитування</p>
                 </div>
-                <div class="chart-legend">
-                    @for (int i = 0; i < _devices.Count; i++)
-                    {
-                        var dev = _devices[i];
-                        var color = GetSeriesColor(i);
-                        <span class="legend-item">
-                            <span class="legend-dot" style="background:@color"></span>
-                            <span>@dev.EffectiveName (@(dev.IsOnline ? $"{dev.TemperatureCelsius:0.0}°C" : "Offline"))</span>
-                        </span>
-                    }
+                <div class="filter-tabs">
+                    <button class="filter-tab @(_selectedChartSensor == "temp" ? "active" : "")" @onclick='() => _selectedChartSensor = "temp"'>
+                        🌡 Темп. (°C)
+                    </button>
+                    <button class="filter-tab @(_selectedChartSensor == "humidity" ? "active" : "")" @onclick='() => _selectedChartSensor = "humidity"'>
+                        💧 Вологість (%)
+                    </button>
+                    <button class="filter-tab @(_selectedChartSensor == "power" ? "active" : "")" @onclick='() => _selectedChartSensor = "power"'>
+                        ⚡ Потужність (W)
+                    </button>
+                    <button class="filter-tab @(_selectedChartSensor == "co2" ? "active" : "")" @onclick='() => _selectedChartSensor = "co2"'>
+                        🍃 CO₂ (ppm)
+                    </button>
                 </div>
             </div>
 
+            <div class="chart-legend" style="margin-bottom:10px">
+                @for (int i = 0; i < _devices.Count; i++)
+                {
+                    var dev = _devices[i];
+                    var color = GetSeriesColor(i);
+                    <span class="legend-item">
+                        <span class="legend-dot" style="background:@color"></span>
+                        <span>@dev.EffectiveName (@(dev.IsOnline ? FormatCurrentSensorValue(dev) : "Offline"))</span>
+                    </span>
+                }
+            </div>
+
             <div class="svg-chart-container">
-                @if (_devices.Any(d => d.TemperatureHistory.Count > 0))
+                @if (_devices.Any(d => GetSelectedHistory(d).Count > 0))
                 {
                     <svg viewBox="0 0 700 210" class="telemetry-svg" preserveAspectRatio="none">
                         @for (int step = 0; step <= 4; step++)
                         {
                             var y = 20 + step * 40;
-                            var labelVal = ChartMaxTemp - step * ((ChartMaxTemp - ChartMinTemp) / 4.0);
-                            <line x1="48" y1="@y" x2="685" y2="@y" stroke="rgba(148, 163, 184, 0.14)" stroke-dasharray="4 4" />
-                            <svg:text x="40" y="@(y + 4)" text-anchor="end" fill="#94a3b8" font-size="11">@($"{labelVal:0.0}°")</svg:text>
+                            var labelVal = ChartMaxVal - step * ((ChartMaxVal - ChartMinVal) / 4.0);
+                            <line x1="54" y1="@y" x2="685" y2="@y" stroke="rgba(148, 163, 184, 0.14)" stroke-dasharray="4 4" />
+                            <svg:text x="46" y="@(y + 4)" text-anchor="end" fill="#94a3b8" font-size="11">@($"{labelVal:0}{ChartUnitSuffix}")</svg:text>
                         }
 
                         @for (int i = 0; i < _devices.Count; i++)
                         {
                             var dev = _devices[i];
-                            if (dev.TemperatureHistory.Count < 1) continue;
+                            var history = GetSelectedHistory(dev);
+                            if (history.Count < 1) continue;
                             var color = GetSeriesColor(i);
-                            var points = BuildSvgPolylinePoints(dev.TemperatureHistory, 48, 685, 20, 180, ChartMinTemp, ChartMaxTemp);
-                            var areaPoints = BuildSvgAreaPoints(dev.TemperatureHistory, 48, 685, 20, 180, ChartMinTemp, ChartMaxTemp);
+                            var points = BuildSvgPolylinePoints(history, 54, 685, 20, 180, ChartMinVal, ChartMaxVal);
+                            var areaPoints = BuildSvgAreaPoints(history, 54, 685, 20, 180, ChartMinVal, ChartMaxVal);
 
                             <polygon points="@areaPoints" fill="@color" fill-opacity="0.10" />
                             <polyline fill="none" stroke="@color" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" points="@points" />
 
-                            @foreach (var pt in GetSvgCoordinates(dev.TemperatureHistory, 48, 685, 20, 180, ChartMinTemp, ChartMaxTemp))
+                            @foreach (var pt in GetSvgCoordinates(history, 54, 685, 20, 180, ChartMinVal, ChartMaxVal))
                             {
                                 <circle cx="@pt.X.ToString("0.0", CultureInfo.InvariantCulture)"
                                         cy="@pt.Y.ToString("0.0", CultureInfo.InvariantCulture)"
@@ -368,11 +393,53 @@
 
                         <div class="metric-box">
                             <div class="metric-box-top">
-                                <span class="metric-title">⏱ Час роботи (Uptime)</span>
-                                <span class="metric-big text-emerald">@device.FormattedUptime</span>
+                                <span class="metric-title">💧 Вологість</span>
+                                <span class="metric-big text-emerald">@device.HumidityPercent.ToString("0.0") %</span>
                             </div>
-                            <span class="metric-sub">@device.UptimeSeconds.ToString("N0") сек з моменту запуску</span>
+                            <div class="progress-bar-bg sm">
+                                @{
+                                    var humPct = Math.Clamp(device.HumidityPercent, 5.0, 100.0);
+                                }
+                                <div class="progress-bar-fill fill-emerald"
+                                     style="width: @(humPct.ToString("0.0", CultureInfo.InvariantCulture))%"></div>
+                            </div>
                         </div>
+
+                        <div class="metric-box">
+                            <div class="metric-box-top">
+                                <span class="metric-title">⚡ Споживання</span>
+                                <span class="metric-big text-indigo">@device.PowerWatts.ToString("0.0") W</span>
+                            </div>
+                            <div class="progress-bar-bg sm">
+                                @{
+                                    var pwrPct = Math.Clamp(device.PowerWatts / 250.0 * 100.0, 5.0, 100.0);
+                                }
+                                <div class="progress-bar-fill fill-sky"
+                                     style="width: @(pwrPct.ToString("0.0", CultureInfo.InvariantCulture))%"></div>
+                            </div>
+                        </div>
+
+                        <div class="metric-box">
+                            <div class="metric-box-top">
+                                <span class="metric-title">🍃 Рівень CO₂</span>
+                                <span class="metric-big @(device.Co2Ppm > 600 ? "text-rose" : "text-emerald")">@device.Co2Ppm ppm</span>
+                            </div>
+                            <div class="progress-bar-bg sm">
+                                @{
+                                    var co2Pct = Math.Clamp((device.Co2Ppm - 350.0) / 650.0 * 100.0, 5.0, 100.0);
+                                }
+                                <div class="progress-bar-fill @(device.Co2Ppm > 600 ? "fill-rose" : "fill-emerald")"
+                                     style="width: @(co2Pct.ToString("0.0", CultureInfo.InvariantCulture))%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metric-box" style="margin-top:-4px">
+                        <div class="metric-box-top">
+                            <span class="metric-title">⏱ Час безперервної роботи (Uptime)</span>
+                            <span class="metric-big text-emerald">@device.FormattedUptime</span>
+                        </div>
+                        <span class="metric-sub">@device.UptimeSeconds.ToString("N0") сек з моменту запуску</span>
                     </div>
 
                     @if (device.RawMetrics.Count > 0)
@@ -479,11 +546,14 @@ else if (_activeTab == "workflows")
             <div class="form-field">
                 <label>2. Умова — Параметр (Condition)</label>
                 <select class="input-control" @bind="_wfConditionField">
-                    <option value="@WorkflowMetricField.TemperatureCelsius">Temperature (°C)</option>
-                    <option value="@WorkflowMetricField.UptimeSeconds">Uptime (секунди)</option>
-                    <option value="@WorkflowMetricField.ResponseTimeMs">Ping / Затримка (мс)</option>
-                    <option value="@WorkflowMetricField.IsOnline">IsOnline (true / false)</option>
-                    <option value="@WorkflowMetricField.OnlineDevicesCount">Кількість Online-пристроїв</option>
+                    <option value="@WorkflowMetricField.TemperatureCelsius">🌡 Temperature (°C)</option>
+                    <option value="@WorkflowMetricField.HumidityPercent">💧 Humidity (%)</option>
+                    <option value="@WorkflowMetricField.PowerWatts">⚡ Power Consumption (W)</option>
+                    <option value="@WorkflowMetricField.Co2Ppm">🍃 CO₂ Air Quality (ppm)</option>
+                    <option value="@WorkflowMetricField.UptimeSeconds">⏱ Uptime (секунди)</option>
+                    <option value="@WorkflowMetricField.ResponseTimeMs">📡 Ping / Затримка (мс)</option>
+                    <option value="@WorkflowMetricField.IsOnline">🟢 IsOnline (true / false)</option>
+                    <option value="@WorkflowMetricField.OnlineDevicesCount">🔢 Кількість Online-пристроїв</option>
                 </select>
             </div>
 
@@ -783,6 +853,7 @@ else if (_activeTab == "mcp")
 
 @code {
     private string _activeTab = "dashboard";
+    private string _selectedChartSensor = "temp";
     private IReadOnlyList<MonitoredDeviceState> _devices = Array.Empty<MonitoredDeviceState>();
     private IReadOnlyList<ActivityLogEntry> _logs = Array.Empty<ActivityLogEntry>();
     private IReadOnlyList<WorkflowRule> _rules = Array.Empty<WorkflowRule>();
@@ -831,22 +902,55 @@ else if (_activeTab == "mcp")
     private double MaxTemperature =>
         OnlineCount > 0 ? _devices.Where(d => d.IsOnline).Max(d => d.TemperatureCelsius) : 0;
 
-    private double ChartMinTemp
+    private double AverageHumidity =>
+        OnlineCount > 0 ? _devices.Where(d => d.IsOnline).Average(d => d.HumidityPercent) : 0;
+
+    private double TotalPowerWatts =>
+        OnlineCount > 0 ? _devices.Where(d => d.IsOnline).Sum(d => d.PowerWatts) : 0;
+
+    private double AverageCo2Ppm =>
+        OnlineCount > 0 ? _devices.Where(d => d.IsOnline).Average(d => d.Co2Ppm) : 0;
+
+    private string ChartUnitSuffix => _selectedChartSensor switch
+    {
+        "humidity" => "%",
+        "power" => "W",
+        "co2" => "",
+        _ => "°"
+    };
+
+    private List<MetricSample> GetSelectedHistory(MonitoredDeviceState dev) => _selectedChartSensor switch
+    {
+        "humidity" => dev.HumidityHistory,
+        "power" => dev.PowerHistory,
+        "co2" => dev.Co2History,
+        _ => dev.TemperatureHistory
+    };
+
+    private string FormatCurrentSensorValue(MonitoredDeviceState dev) => _selectedChartSensor switch
+    {
+        "humidity" => $"{dev.HumidityPercent:0.0}%",
+        "power" => $"{dev.PowerWatts:0.0} W",
+        "co2" => $"{dev.Co2Ppm} ppm",
+        _ => $"{dev.TemperatureCelsius:0.0}°C"
+    };
+
+    private double ChartMinVal
     {
         get
         {
-            var pts = _devices.SelectMany(d => d.TemperatureHistory).Select(p => p.Value).ToList();
-            return pts.Count > 0 ? Math.Floor(pts.Min() - 2) : 35;
+            var pts = _devices.SelectMany(GetSelectedHistory).Select(p => p.Value).ToList();
+            return pts.Count > 0 ? Math.Floor(pts.Min() - 2) : 30;
         }
     }
 
-    private double ChartMaxTemp
+    private double ChartMaxVal
     {
         get
         {
-            var pts = _devices.SelectMany(d => d.TemperatureHistory).Select(p => p.Value).ToList();
-            var max = pts.Count > 0 ? Math.Ceiling(pts.Max() + 2) : 55;
-            return Math.Max(ChartMinTemp + 4, max);
+            var pts = _devices.SelectMany(GetSelectedHistory).Select(p => p.Value).ToList();
+            var max = pts.Count > 0 ? Math.Ceiling(pts.Max() + 2) : 60;
+            return Math.Max(ChartMinVal + 4, max);
         }
     }
 
