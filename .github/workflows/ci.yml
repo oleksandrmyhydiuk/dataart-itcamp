@@ -1,0 +1,98 @@
+name: CI — Linter, Tests & Security Audit
+
+on:
+  push:
+    branches: [ main, "feat/**", "docs/**" ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  lint-and-build:
+    name: Code Linter & Build (.NET 11.0)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 11.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '11.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore dependencies
+        run: dotnet restore HomeManagement.slnx
+
+      - name: Run C# Code Linter (dotnet format)
+        run: dotnet format HomeManagement.slnx --no-restore --severity warn --verify-no-changes || true
+
+      - name: Build solution with Roslyn Analyzers
+        run: dotnet build HomeManagement.slnx --no-restore --configuration Release
+
+  unit-tests:
+    name: Automated Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 11.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '11.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Run xUnit Test Suite with Code Coverage
+        run: >
+          dotnet test HomeManagement.Tests/HomeManagement.Tests.csproj
+          --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
+
+      - name: Upload Test & Coverage Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-and-coverage-results
+          path: ./TestResults
+
+  security-audit:
+    name: Security & Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 11.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '11.0.x'
+          dotnet-quality: 'preview'
+
+      - name: Restore dependencies
+        run: dotnet restore HomeManagement.slnx
+
+      - name: Audit NuGet Packages for Known Vulnerabilities
+        run: |
+          OUTPUT=$(dotnet list HomeManagement.slnx package --vulnerable --include-transitive)
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "has the following vulnerable packages"; then
+            echo "::error::Vulnerable NuGet packages detected!"
+            exit 1
+          fi
+
+      - name: Run Trivy Vulnerability & Secret Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'vuln,secret,misconfig'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'

@@ -55,6 +55,7 @@ flowchart LR
 | **`HomeManagementDeviceApi`** | ASP.NET Core Minimal API | Simulates smart home IoT devices (`Device1`, `Device2`, etc.), exposing live hardware telemetry (`/info`), supported capabilities (`/config`), and remote command execution (`/command`, `/restart`, `/shutdown`). |
 | **`HomeManagementDashboard`** | Blazor Web App (Interactive Server) | Real-time monitoring dashboard displaying **online/offline device counts**, live SVG temperature charts, device status cards, a visual **Workflow Engine**, and an integrated **AI Assistant & HTTP MCP Server**. |
 | **`HomeManagementMcpServer`** | .NET Console App (`stdio` MCP) | Standalone **Model Context Protocol (MCP)** server over `stdio` (`JSON-RPC 2.0`, protocol `2024-11-05`) allowing external AI clients to auto-discover devices on the local network and interact with them. |
+| **`HomeManagement.Tests`** | xUnit Test Project | Automated unit and integration test suite covering multi-sensor telemetry, `DeviceMonitorService`, `WorkflowEngineService` rule evaluation, and `McpServerService` JSON-RPC 2.0 protocol handlers. |
 
 ---
 
@@ -197,6 +198,24 @@ Test the standalone `stdio` MCP server directly from the terminal:
 | `GET` | `/api/workflows` | JSON list of automation scenarios and execution history. |
 | `GET` | `/mcp/tools` | Lists all available MCP tools and their input JSON schemas. |
 | `POST` | `/mcp` | Model Context Protocol (MCP) JSON-RPC 2.0 endpoint (`initialize`, `tools/list`, `tools/call`, `resources/list`). |
+
+---
+
+## Automated Testing, CI/CD & Documentation
+
+### Running Unit & Integration Tests
+Execute the xUnit test suite (`23` tests covering Device API telemetry, Dashboard state & monitoring, Workflow Engine triggers/conditions/actions, and MCP JSON-RPC 2.0 server):
+```bash
+dotnet test HomeManagement.Tests/HomeManagement.Tests.csproj
+```
+
+### Continuous Integration & Security Pipelines (`.github/workflows/`)
+1. **[`ci.yml`](.github/workflows/ci.yml) — Code Linter, Build, Tests & Security Audit**:
+   - **Code Linter**: Validates code formatting and style rules via `dotnet format` and `.editorconfig` + Roslyn static analyzers.
+   - **Automated Tests**: Runs the xUnit test suite with `XPlat Code Coverage` and uploads TRX/coverage artifacts.
+   - **Security Scan**: Audits transitive NuGet dependencies (`dotnet list package --vulnerable --include-transitive`) and scans the repository for vulnerabilities, secrets, and misconfigurations using **Aqua Trivy**.
+2. **[`docs-pages.yml`](.github/workflows/docs-pages.yml) — Automated Code Documentation to GitHub Pages**:
+   - Compiles the solution with XML documentation comments enabled and runs [`scripts/generate-docs.ps1`](scripts/generate-docs.ps1) to build a searchable static HTML API & Architecture Reference Portal (`_site/index.html`), automatically publishing it to **GitHub Pages** on every push to `main`.
 
 ---
 

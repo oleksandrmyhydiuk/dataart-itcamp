@@ -2,4 +2,5 @@
   <Project Path="HomeManagementDeviceApi.csproj" />
   <Project Path="..\HomeManagementDashboard\HomeManagementDashboard.csproj" />
   <Project Path="..\HomeManagementMcpServer\HomeManagementMcpServer.csproj" />
+  <Project Path="..\HomeManagement.Tests\HomeManagement.Tests.csproj" />
 </Solution>
