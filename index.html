@@ -1,0 +1,382 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HomeManagement — Code &amp; API Documentation</title>
+    <style>
+        :root {
+            --bg: #0b1120;
+            --card: #111827;
+            --border: rgba(148, 163, 184, 0.18);
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --accent: #38bdf8;
+            --emerald: #10b981;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+            line-height: 1.6;
+            padding: 32px 24px 64px;
+        }
+        .container { max-width: 1280px; margin: 0 auto; }
+        header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 24px;
+            margin-bottom: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        h1 { font-size: 1.9rem; font-weight: 800; }
+        .subtitle { color: var(--muted); font-size: 0.95rem; margin-top: 4px; }
+        .meta { color: var(--accent); font-size: 0.82rem; }
+        h2 { font-size: 1.3rem; margin: 28px 0 14px; color: #e2e8f0; }
+        .proj-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        .proj-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+            border-top: 3px solid var(--accent);
+        }
+        .proj-card h3 { font-size: 1.05rem; margin-bottom: 6px; }
+        .proj-card p { font-size: 0.86rem; color: var(--muted); }
+        .search-bar {
+            width: 100%;
+            max-width: 440px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.92rem;
+            margin-bottom: 18px;
+        }
+        .doc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 16px;
+        }
+        .doc-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .doc-card-header { display: flex; justify-content: space-between; align-items: center; }
+        .badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(56, 189, 248, 0.16);
+            color: var(--accent);
+        }
+        .badge-enum { background: rgba(16, 185, 129, 0.16); color: var(--emerald); }
+        .badge-record { background: rgba(168, 85, 247, 0.18); color: #c084fc; }
+        .ns-tag { font-size: 0.78rem; color: var(--muted); font-family: Consolas, monospace; }
+        .file-path { font-size: 0.78rem; color: var(--muted); }
+        .methods-title { font-size: 0.75rem; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-top: 6px; }
+        .methods-list { list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; }
+        .methods-list code { color: #cbd5e1; font-family: Consolas, monospace; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>HomeManagement — Code &amp; API Reference</h1>
+                <p class="subtitle">Automated Code Documentation • .NET 11.0 • Smart Device API, Blazor Dashboard, Workflow Engine &amp; MCP Server</p>
+            </div>
+            <div class="meta">Generated: 2026-11-16 17:59:55 UTC</div>
+        </header>
+
+        <h2>Solution Architecture Modules</h2>
+        <div class="proj-grid">
+                <div class="proj-card">
+        <h3>HomeManagementDeviceApi</h3>
+        <p>Smart Home IoT Device Emulator Minimal API (/info, /config, /command, /restart, /shutdown)</p>
+    </div>    <div class="proj-card">
+        <h3>HomeManagementDashboard</h3>
+        <p>Blazor Interactive Server Monitoring Dashboard, Workflow Automation Engine & HTTP MCP Hub</p>
+    </div>    <div class="proj-card">
+        <h3>HomeManagementMcpServer</h3>
+        <p>Standalone Model Context Protocol (MCP) JSON-RPC 2.0 Server over stdio for AI Clients</p>
+    </div>    <div class="proj-card">
+        <h3>HomeManagement.Tests</h3>
+        <p>xUnit Automated Unit & Integration Test Suite for Telemetry, Dashboard, Workflows & MCP</p>
+    </div>
+        </div>
+
+        <h2>Types, Services &amp; Models Reference (30 documented types)</h2>
+        <input type="text" id="filterInput" class="search-bar" placeholder="Filter classes, records, enums or namespaces..." onkeyup="filterCards()" />
+
+        <div class="doc-grid" id="cardsContainer">
+                <div class="doc-card" data-search="commandtype homemanagement.shared">
+        <div class="doc-card-header">
+            <span class="badge badge-enum">ENUM</span>
+            <span class="ns-tag">HomeManagement.Shared</span>
+        </div>
+        <h3>CommandType</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDeviceApi\Shared\CommandType.cs</code></div>
+        
+    </div>    <div class="doc-card" data-search="deviceaction homemanagement.shared">
+        <div class="doc-card-header">
+            <span class="badge badge-record">RECORD</span>
+            <span class="ns-tag">HomeManagement.Shared</span>
+        </div>
+        <h3>DeviceAction</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDeviceApi\Shared\DeviceAction.cs</code></div>
+        
+    </div>    <div class="doc-card" data-search="deviceconfig homemanagement.shared">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagement.Shared</span>
+        </div>
+        <h3>DeviceConfig</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDeviceApi\Shared\Device.cs</code></div>
+        
+    </div>    <div class="doc-card" data-search="deviceinfo homemanagement.shared">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagement.Shared</span>
+        </div>
+        <h3>DeviceInfo</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDeviceApi\Shared\DeviceInfo.cs</code></div>
+        
+    </div>    <div class="doc-card" data-search="devicemanager homemanagement.shared">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagement.Shared</span>
+        </div>
+        <h3>DeviceManager</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDeviceApi\Shared\DeviceManager.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>int GetUptime()</code></li><li><code>double GetTemperature()</code></li><li><code>double GetHumidity()</code></li><li><code>double GetPowerConsumptionWatts()</code></li><li><code>int GetCo2Ppm()</code></li></ul>
+    </div>    <div class="doc-card" data-search="networkmanager homemanagement.shared">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagement.Shared</span>
+        </div>
+        <h3>NetworkManager</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDeviceApi\Shared\NetworkManager.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>string GetLocalSubnet()</code></li><li><code>string GetLocalIp()</code></li><li><code>string GetAddress()</code></li></ul>
+    </div>    <div class="doc-card" data-search="dashboardmonitortests homemanagement.tests">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagement.Tests</span>
+        </div>
+        <h3>DashboardMonitorTests</h3>
+        <div class="file-path">Source: <code>.\HomeManagement.Tests\DashboardMonitorTests.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>void Constructor_LoadsConfiguredDevices()</code></li><li><code>void FindDevice_LocatesByNameAndByUrl()</code></li><li><code>void RemoveDevice_DecrementsTotalCount()</code></li><li><code>void ExternalLogs_CanBeAddedAndCleared()</code></li><li><code>void MonitoredDeviceState_FormatsUptimeCorrectly(int seconds, string expected)</code></li></ul>
+    </div>    <div class="doc-card" data-search="deviceapitelemetrytests homemanagement.tests">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagement.Tests</span>
+        </div>
+        <h3>DeviceApiTelemetryTests</h3>
+        <div class="file-path">Source: <code>.\HomeManagement.Tests\DeviceApiTelemetryTests.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>void GetUptime_ReturnsNonNegativeSeconds()</code></li><li><code>void GetTemperature_ReturnsRealisticRange()</code></li><li><code>void GetHumidity_ReturnsValidPercentage()</code></li><li><code>void GetPowerConsumptionWatts_ReturnsPositiveLoad()</code></li><li><code>void GetCo2Ppm_ReturnsRealisticIndoorConcentration()</code></li><li><code>void NetworkManager_ReturnsFormattedIpAndAddress()</code></li><li><code>void DeviceModels_InitializePropertiesCorrectly()</code></li></ul>
+    </div>    <div class="doc-card" data-search="mcpservertests homemanagement.tests">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagement.Tests</span>
+        </div>
+        <h3>McpServerTests</h3>
+        <div class="file-path">Source: <code>.\HomeManagement.Tests\McpServerTests.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>Task HandleJsonRpc_Initialize_ReturnsProtocolVersionAndServerInfo()</code></li><li><code>Task HandleJsonRpc_ToolsList_ReturnsAllRegisteredSmartHomeTools()</code></li><li><code>Task HandleJsonRpc_ToolsCall_CreateAndListWorkflows_Succeeds()</code></li><li><code>Task ProcessNaturalLanguagePromptAsync_SelectsAppropriateMcpTool()</code></li></ul>
+    </div>    <div class="doc-card" data-search="workflowenginetests homemanagement.tests">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagement.Tests</span>
+        </div>
+        <h3>WorkflowEngineTests</h3>
+        <div class="file-path">Source: <code>.\HomeManagement.Tests\WorkflowEngineTests.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>void SeedDefaultScenarios_CreatesInitialWorkflows()</code></li><li><code>void AddToggleAndRemoveRule_ModifiesRuleCollection()</code></li><li><code>Task TriggerRuleManuallyAsync_ExecutesNotificationScenarioAndLogsHistory()</code></li><li><code>void WorkflowCondition_Describe_FormatsHumanReadableExpression()</code></li></ul>
+    </div>    <div class="doc-card" data-search="activitylogentry homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-record">RECORD</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>ActivityLogEntry</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\MonitoredDeviceState.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>record MetricSample(DateTime Timestamp, double Value)</code></li></ul>
+    </div>    <div class="doc-card" data-search="comparisonoperator homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-enum">ENUM</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>ComparisonOperator</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\WorkflowModels.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>string Describe()</code></li><li><code>string DescribeTrigger()</code></li><li><code>record WorkflowExecutionLog(DateTime Timestamp, string RuleId, string RuleName, string TriggerReason, string ActionSummary, string ResultOutput, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="deviceendpointconfig homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-record">RECORD</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>DeviceEndpointConfig</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\MonitoredDeviceState.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>record MetricSample(DateTime Timestamp, double Value)</code></li><li><code>record ActivityLogEntry(DateTime Timestamp, string DeviceName, string Category, string Message, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="metricsample homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-record">RECORD</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>MetricSample</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\MonitoredDeviceState.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>record ActivityLogEntry(DateTime Timestamp, string DeviceName, string Category, string Message, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="monitoreddevicestate homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>MonitoredDeviceState</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\MonitoredDeviceState.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>record MetricSample(DateTime Timestamp, double Value)</code></li><li><code>record ActivityLogEntry(DateTime Timestamp, string DeviceName, string Category, string Message, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="workflowactiondefinition homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>WorkflowActionDefinition</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\WorkflowModels.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>string Describe()</code></li><li><code>string DescribeTrigger()</code></li><li><code>record WorkflowExecutionLog(DateTime Timestamp, string RuleId, string RuleName, string TriggerReason, string ActionSummary, string ResultOutput, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="workflowactiontype homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-enum">ENUM</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>WorkflowActionType</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\WorkflowModels.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>string Describe()</code></li><li><code>string DescribeTrigger()</code></li><li><code>record WorkflowExecutionLog(DateTime Timestamp, string RuleId, string RuleName, string TriggerReason, string ActionSummary, string ResultOutput, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="workflowcondition homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>WorkflowCondition</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\WorkflowModels.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>string Describe()</code></li><li><code>string DescribeTrigger()</code></li><li><code>record WorkflowExecutionLog(DateTime Timestamp, string RuleId, string RuleName, string TriggerReason, string ActionSummary, string ResultOutput, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="workflowexecutionlog homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-record">RECORD</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>WorkflowExecutionLog</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\WorkflowModels.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>string Describe()</code></li><li><code>string DescribeTrigger()</code></li></ul>
+    </div>    <div class="doc-card" data-search="workflowmetricfield homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-enum">ENUM</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>WorkflowMetricField</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\WorkflowModels.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>string Describe()</code></li><li><code>string DescribeTrigger()</code></li><li><code>record WorkflowExecutionLog(DateTime Timestamp, string RuleId, string RuleName, string TriggerReason, string ActionSummary, string ResultOutput, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="workflowrule homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>WorkflowRule</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\WorkflowModels.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>string Describe()</code></li><li><code>string DescribeTrigger()</code></li><li><code>record WorkflowExecutionLog(DateTime Timestamp, string RuleId, string RuleName, string TriggerReason, string ActionSummary, string ResultOutput, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="workflowtriggertype homemanagementdashboard.models">
+        <div class="doc-card-header">
+            <span class="badge badge-enum">ENUM</span>
+            <span class="ns-tag">HomeManagementDashboard.Models</span>
+        </div>
+        <h3>WorkflowTriggerType</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Models\WorkflowModels.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>string Describe()</code></li><li><code>string DescribeTrigger()</code></li><li><code>record WorkflowExecutionLog(DateTime Timestamp, string RuleId, string RuleName, string TriggerReason, string ActionSummary, string ResultOutput, bool IsError = false)</code></li></ul>
+    </div>    <div class="doc-card" data-search="aichatturn homemanagementdashboard.services">
+        <div class="doc-card-header">
+            <span class="badge badge-record">RECORD</span>
+            <span class="ns-tag">HomeManagementDashboard.Services</span>
+        </div>
+        <h3>AiChatTurn</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Services\McpServerService.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>record McpToolDescriptor(string Name, string Description, JsonObject InputSchema)</code></li><li><code>IReadOnlyList&lt;AiChatTurn&gt; GetChatHistory()</code></li><li><code>IReadOnlyList&lt;McpToolDescriptor&gt; GetTools()</code></li><li><code>Task&lt;JsonObject&gt; HandleJsonRpcAsync(JsonObject request)</code></li><li><code>Task&lt;JsonObject&gt; CallToolDirectAsync(string toolName, JsonObject arguments)</code></li><li><code>Task&lt;AiChatTurn&gt; ProcessNaturalLanguagePromptAsync(string prompt)</code></li></ul>
+    </div>    <div class="doc-card" data-search="devicemonitorservice homemanagementdashboard.services">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagementDashboard.Services</span>
+        </div>
+        <h3>DeviceMonitorService</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Services\DeviceMonitorService.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>IReadOnlyList&lt;MonitoredDeviceState&gt; GetDevices()</code></li><li><code>IReadOnlyList&lt;ActivityLogEntry&gt; GetActivityLogs()</code></li><li><code>Task StartAsync(CancellationToken cancellationToken)</code></li><li><code>Task RefreshAllAsync(CancellationToken token = default)</code></li><li><code>Task PollDeviceAsync(MonitoredDeviceState device, CancellationToken token = default)</code></li><li><code>Task&lt;string&gt; ExecuteActionAsync(MonitoredDeviceState device, DeviceAction action)</code></li><li><code>Task&lt;bool&gt; AddDeviceAsync(string url, string? customName = null)</code></li><li><code>void RemoveDevice(string id)</code></li><li><code>Task&lt;int&gt; DiscoverLocalhostDevicesAsync()</code></li><li><code>void ClearLogs()</code></li><li><code>void AddExternalLog(string deviceOrSource, string category, string message, bool isError = false)</code></li><li><code>MonitoredDeviceState? FindDevice(string nameOrUrl)</code></li><li><code>Task StopAsync(CancellationToken cancellationToken)</code></li><li><code>void Dispose()</code></li></ul>
+    </div>    <div class="doc-card" data-search="mcpserverservice homemanagementdashboard.services">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagementDashboard.Services</span>
+        </div>
+        <h3>McpServerService</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Services\McpServerService.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>record McpToolDescriptor(string Name, string Description, JsonObject InputSchema)</code></li><li><code>record AiChatTurn(DateTime Timestamp, string UserPrompt, string ToolCalled, string McpRequestJson, string McpResponseJson, string AssistantReply)</code></li><li><code>IReadOnlyList&lt;AiChatTurn&gt; GetChatHistory()</code></li><li><code>IReadOnlyList&lt;McpToolDescriptor&gt; GetTools()</code></li><li><code>Task&lt;JsonObject&gt; HandleJsonRpcAsync(JsonObject request)</code></li><li><code>Task&lt;JsonObject&gt; CallToolDirectAsync(string toolName, JsonObject arguments)</code></li><li><code>Task&lt;AiChatTurn&gt; ProcessNaturalLanguagePromptAsync(string prompt)</code></li></ul>
+    </div>    <div class="doc-card" data-search="mcptooldescriptor homemanagementdashboard.services">
+        <div class="doc-card-header">
+            <span class="badge badge-record">RECORD</span>
+            <span class="ns-tag">HomeManagementDashboard.Services</span>
+        </div>
+        <h3>McpToolDescriptor</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Services\McpServerService.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>record AiChatTurn(DateTime Timestamp, string UserPrompt, string ToolCalled, string McpRequestJson, string McpResponseJson, string AssistantReply)</code></li><li><code>IReadOnlyList&lt;AiChatTurn&gt; GetChatHistory()</code></li><li><code>IReadOnlyList&lt;McpToolDescriptor&gt; GetTools()</code></li><li><code>Task&lt;JsonObject&gt; HandleJsonRpcAsync(JsonObject request)</code></li><li><code>Task&lt;JsonObject&gt; CallToolDirectAsync(string toolName, JsonObject arguments)</code></li><li><code>Task&lt;AiChatTurn&gt; ProcessNaturalLanguagePromptAsync(string prompt)</code></li></ul>
+    </div>    <div class="doc-card" data-search="workflowengineservice homemanagementdashboard.services">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagementDashboard.Services</span>
+        </div>
+        <h3>WorkflowEngineService</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDashboard\Services\WorkflowEngineService.cs</code></div>
+        <div class='methods-title'>Public Methods &amp; Signatures</div><ul class='methods-list'><li><code>IReadOnlyList&lt;WorkflowRule&gt; GetRules()</code></li><li><code>IReadOnlyList&lt;WorkflowExecutionLog&gt; GetExecutionHistory()</code></li><li><code>WorkflowRule AddRule(WorkflowRule rule)</code></li><li><code>bool RemoveRule(string id)</code></li><li><code>void ToggleRule(string id)</code></li><li><code>Task&lt;(bool Success, string Output)&gt; TriggerRuleManuallyAsync(string idOrName)</code></li><li><code>void Dispose()</code></li></ul>
+    </div>    <div class="doc-card" data-search="command homemanagementdeviceapi">
+        <div class="doc-card-header">
+            <span class="badge badge-record">RECORD</span>
+            <span class="ns-tag">HomeManagementDeviceApi</span>
+        </div>
+        <h3>Command</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDeviceApi\Command.cs</code></div>
+        
+    </div>    <div class="doc-card" data-search="commandinfo homemanagementdeviceapi">
+        <div class="doc-card-header">
+            <span class="badge badge-record">RECORD</span>
+            <span class="ns-tag">HomeManagementDeviceApi</span>
+        </div>
+        <h3>CommandInfo</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDeviceApi\CommandInfo.cs</code></div>
+        
+    </div>    <div class="doc-card" data-search="commandssettings homemanagementdeviceapi">
+        <div class="doc-card-header">
+            <span class="badge badge-class">CLASS</span>
+            <span class="ns-tag">HomeManagementDeviceApi</span>
+        </div>
+        <h3>CommandsSettings</h3>
+        <div class="file-path">Source: <code>.\HomeManagementDeviceApi\CommandsSettings.cs</code></div>
+        
+    </div>
+        </div>
+    </div>
+
+    <script>
+        function filterCards() {
+            const q = document.getElementById('filterInput').value.toLowerCase();
+            document.querySelectorAll('.doc-card').forEach(card => {
+                const text = card.getAttribute('data-search') || '';
+                card.style.display = text.includes(q) ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
