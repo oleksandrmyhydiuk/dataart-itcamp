@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: "pages"
@@ -16,6 +18,9 @@ jobs:
   build-and-deploy-docs:
     name: Generate & Publish API Documentation
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,13 +37,7 @@ jobs:
         shell: pwsh
         run: ./scripts/generate-docs.ps1 -Configuration Release -OutputDir ./_site
 
-      - name: Upload Documentation Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: code-documentation-site
-          path: ./_site
-
-      - name: Deploy to GitHub Pages (gh-pages branch)
+      - name: Update gh-pages Branch
         run: |
           cd _site
           git init
@@ -48,3 +47,23 @@ jobs:
           git add -A
           git commit -m "docs(pages): publish generated code documentation"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
+          rm -rf .git
+
+      - name: Configure GitHub Pages (Auto-Enable)
+        id: pages_config
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload GitHub Pages Artifact
+        if: steps.pages_config.outcome == 'success'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        if: steps.pages_config.outcome == 'success'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
