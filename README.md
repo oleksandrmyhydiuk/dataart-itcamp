@@ -60,10 +60,16 @@ flowchart LR
 
 ## Key Features
 
-### 1. Real-Time Device Monitoring Dashboard
-- **Live Fleet KPIs**: Displays the **number of online devices**, offline device alerts, network availability percentage, average/min/max temperature (`°C`), and average network ping (`ms`).
-- **Telemetry Visualization**: Multi-series real-time **SVG Temperature Trend Chart** and comparative device uptime bars.
-- **Interactive Device Control Cards**: Shows each device's online status, endpoint URL, local IP address, temperature gauge, formatted uptime, and one-click buttons for all actions advertised by `/config` (`INFO`, `Start Notepad`, `Start Calculator`, `Get Motion`, `Start Paint`, `RESTART`, `SHUTDOWN`) with inline command output.
+### 1. Real-Time Multi-Sensor Device Monitoring Dashboard
+- **Multi-Sensor Telemetry**: Each smart home device reports 5 live hardware/environmental metrics via `GET /info`:
+  - **Temperature (`Temperature`, `°C`)** — thermal sensor reading;
+  - **Relative Humidity (`Humidity`, `%`)** — ambient humidity level;
+  - **Power Consumption (`PowerWatts`, `W`)** — active electrical load;
+  - **Air Quality (`Co2Ppm`, `ppm`)** — indoor CO₂ concentration;
+  - **System Uptime (`UptimeSeconds`, `s`)** — continuous operation time.
+- **Live Fleet KPIs**: Displays the **number of online devices**, offline device alerts, network availability percentage, average climate readings (`°C` & `%`), total power draw (`W`), and average CO₂ (`ppm`).
+- **Interactive Telemetry Visualization**: Multi-series real-time **SVG Sensor Trend Chart** with instant switching between **Temperature (`°C`)**, **Humidity (`%`)**, **Power (`W`)**, and **CO₂ (`ppm`)**, alongside comparative device uptime bars.
+- **Interactive Device Control Cards**: Shows each device's online status, endpoint URL, local IP address, progress bars for all 4 environmental sensors, formatted uptime, and one-click buttons for all actions advertised by `/config` (`INFO`, `Start Notepad`, `Start Calculator`, `Get Motion`, `Start Paint`, `RESTART`, `SHUTDOWN`) with inline command output.
 - **Auto-Discovery & Custom Endpoints**: Scan standard local ports (`1234–1239`, `5000–5001`) with one click or register custom device URLs dynamically.
 
 ### 2. Smart Home Workflow Engine (`Trigger → Condition → Action`)
@@ -73,7 +79,7 @@ flowchart LR
   - `DeviceBecameOffline` — triggered when a device goes offline;
   - `ManualOnly` — triggered on-demand by the user or an AI agent.
 - **Configurable Conditions (`IF`)**:
-  - Evaluates `TemperatureCelsius`, `UptimeSeconds`, `ResponseTimeMs`, `IsOnline`, or `OnlineDevicesCount` using comparison operators (`>`, `>=`, `<`, `<=`, `==`, `!=`).
+  - Evaluates `TemperatureCelsius`, `HumidityPercent`, `PowerWatts`, `Co2Ppm`, `UptimeSeconds`, `ResponseTimeMs`, `IsOnline`, or `OnlineDevicesCount` using comparison operators (`>`, `>=`, `<`, `<=`, `==`, `!=`).
 - **Automated Actions (`THEN`)**:
   - Executes any remote device command (`POST /command`, `GET /info`, `/restart`, `/shutdown`) or posts a system alert to the dashboard activity log.
   - Built-in cooldown protection (`CooldownSeconds`), manual test execution, and a full execution audit trail.

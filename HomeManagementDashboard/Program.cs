@@ -47,6 +47,9 @@ app.MapGet("/api/dashboard/summary", (DeviceMonitorService monitor, WorkflowEngi
             isOnline = d.IsOnline,
             responseTimeMs = d.ResponseTimeMs,
             temperatureCelsius = d.TemperatureCelsius,
+            humidityPercent = d.HumidityPercent,
+            powerWatts = d.PowerWatts,
+            co2Ppm = d.Co2Ppm,
             uptimeSeconds = d.UptimeSeconds,
             formattedUptime = d.FormattedUptime,
             actionsCount = d.Actions.Count
