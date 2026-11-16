@@ -6,17 +6,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  build-docs:
-    name: Generate API & Code Documentation
+  build-and-deploy-docs:
+    name: Generate & Publish API Documentation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -26,7 +24,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '11.0.x'
-          dotnet-quality: 'preview'
 
       - name: Build Solution with XML Documentation
         run: dotnet build HomeManagement.slnx --configuration Release
@@ -35,22 +32,19 @@ jobs:
         shell: pwsh
         run: ./scripts/generate-docs.ps1 -Configuration Release -OutputDir ./_site
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload GitHub Pages Artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload Documentation Artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: code-documentation-site
           path: ./_site
 
-  deploy-pages:
-    name: Publish to GitHub Pages
-    needs: build-docs
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages (gh-pages branch)
+        run: |
+          cd _site
+          git init
+          git checkout -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs(pages): publish generated code documentation"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
